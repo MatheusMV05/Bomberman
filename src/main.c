@@ -22,7 +22,7 @@ void printHello(int nextX, int nextY)
     x = nextX;
     y = nextY;
     screenGotoxy(x, y);
-    printf("Hello World");
+    printf("Let's start");
 }
 
 void printKey(int ch)
