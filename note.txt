@@ -3,3 +3,9 @@ Gerar o executavel gcc ./src/*.c -I./include -o cli-lib-example (cli-lib-example
 exemplo: gcc ./src/*.c -I./include -o bomberman
 
 e para rodar no terminal: ./cli-lib-example (cli-lib-example pode ser mudado por um nome - no caso do exemplo: bomberman)
+
+para rodar no wsl:
+
+cd /home/vinicius/Bomberman
+gcc main.c $(find . -name "*.c" ! -name "main.c") -I./include -o bomberman
+./bomberman
