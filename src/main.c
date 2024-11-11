@@ -1,180 +1,333 @@
-#include <string.h>
-#include <stdlib.h>
 #include "screen.h"
-#include "keyboard.h"
 #include "timer.h"
+#include "keyboard.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
-//Criação da struct para o jogador
-//A struct pode ser utilizada para dois
-typedef struct player{
-    int x;
-    int y;
-    char character[1]; //pode aumentar se for fazer multiplayer
-}Player;
+#define PLAYER_SYMBOL '^'
+#define INVADER_SYMBOL 'W'
+#define BULLET_SYMBOL '|'
+#define ALIEN_BULLET_SYMBOL 'v'
 
+#define SCREEN_WIDTH 75
+#define SCREEN_HEIGHT 23
+#define HITBOX_RADIUS 1
 
-//definem as posições iniciais
-//também os incrementos para movimentar nos eixos
-//Testar depois com valores diferentes 
-int x = 34, y = 12;
-int incX = 1, incY = 1;
+int playerX, playerY;
+int bulletX, bulletY;
+int invaders[5][10];
+int invaderPosX[5][10];
+int invaderPosY[5][10];
+int alienBulletX, alienBulletY;
+int score = 0;
 
-//A lógica do portrait serve para a moldura 
-void portrait(){
-    screenSetColor(RED, WHITE);
-    //Os laços imprimem as linhas horizontais e verticais da moldura
-    //respectivamente e seguem do 0 no eixo até o valor máximo do eixo
-    for (int x = 0; x < MAXX; x++){
-        screenGotoxy(x, 0);
-        printf("-");
-        screenGotoxy(x, MAXY);
-        printf("-");
+// Declarações das funções
+void drawBorders();
+void drawPlayer();
+void drawInvaders();
+void drawBullet();
+void drawAlienBullet();
+void updateBullet();
+void updateAlienBullet();
+void updateInvaders();
+void movePlayer(int direction);
+void shootBullet();
+void alienShoot();
+
+// Função para salvar o score em um arquivo
+void saveScore(const char *playerName, int score) {
+    FILE *file = fopen("score.txt", "a");
+    if (file != NULL) {
+        fprintf(file, "Nome: %s - Pontuação: %d\n", playerName, score);
+        fclose(file);
+    } else {
+        printf("Erro ao abrir o arquivo de pontuação.\n");
     }
-    for (int y = 0; y < MAXY; y++){
-        screenGotoxy(0, y);
-        printf("|");
-        screenGotoxy(MAXX, y);
-        printf("|");
-    }
-    //Estes setam valores as pontas da moldura
-    //MAXX e MAXY são as dimensões máximas da tela no X e Y
-    screenGotoxy(0, 0); //canto superior esquerdo
-    printf("@");
-    screenGotoxy(MAXX, 0); //canto superior direito
-    printf("@");
-    screenGotoxy(0, MAXY); //canto inferior esquerdo
-    printf("@");
-    screenGotoxy(MAXX, MAXY); //canto inferior direito
-    printf("@\n");
-
-    //screenGotoxy: função que posiciona o cursor na posição
-    //(x, y) na tela.
 }
 
-void game(){
-    printf("Iniciar\n");
-    //aqui o código do nosso game
-}
+// Função para exibir o score mais alto no menu
+void showHighScore() {
+    FILE *file = fopen("score.txt", "r");
+    char line[100];
+    int highestScore = 0;
+    char highestPlayer[30] = "";
 
-void credits() {
-    screenClear();
-    portrait();
-    
-    screenGotoxy(MAXX / 2 - 10, MAXY / 2 - 4); 
-    printf("Desenvolvedores:\n");
-    screenGotoxy(MAXX / 2 - 10, MAXY / 2 - 2);
-    printf("- Julia Torres\n");
-    screenGotoxy(MAXX / 2 - 10, MAXY / 2 - 1);
-    printf("- Matheus Martins\n");
-    screenGotoxy(MAXX / 2 - 10, MAXY / 2);
-    printf("- Vinícius Marques\n");
+    if (file != NULL) {
+        while (fgets(line, sizeof(line), file)) {
+            char playerName[30];
+            int playerScore;
 
-    screenGotoxy(MAXX / 2 - 10, MAXY / 2 + 2);
-    printf("Mentores:\n");
-    screenGotoxy(MAXX / 2 - 10, MAXY / 2 + 3);
-    printf("- Pâmela Thays Lins\n");
-    screenGotoxy(MAXX / 2 - 10, MAXY / 2 + 4);
-    printf("- Thiago Guedes Ferreira\n");
-
-    screenGotoxy(MAXX / 2 - 20, MAXY / 2 + 6); 
-    printf("Pressione qualquer tecla para voltar ao menu...\n");
-    while (!keyhit()) {} // Espera uma tecla para retornar
-    readch(); // Limpa a tecla do buffer
-}
-
-// Nosso menu tem somente 3 opções:
-// -jogar
-// -créditos
-// -sair
-// Também temos as instruções logo abaixo do menu
-void menu() {
-    int opcao = 1; // Começa na primeira opção
-    int previous_option = 0; // Para verificar se a opção mudou
-    screenClear();
-    portrait(); // Desenha a moldura uma vez
-
-    while (1) {
-        // Exibe as opções do menu
-        screenGotoxy(MAXX / 2 - 7, 3);
-        printf("Menu Principal\n");
-
-        // Opções do menu com indicador "->" à direita
-        screenGotoxy(MAXX / 2 - 6, 5);
-        printf("%sJogar\n", opcao == 1 ? "-> " : "   ");
-        screenGotoxy(MAXX / 2 - 6, 7);
-        printf("%sCréditos\n", opcao == 2 ? "-> " : "   ");
-        screenGotoxy(MAXX / 2 - 6, 9);
-        printf("%sSair\n", opcao == 3 ? "-> " : "   ");
-
-        screenGotoxy(MAXX / 2 - 10, 13);
-        printf("Use W e S para navegar");
-        screenGotoxy(MAXX / 2 - 10, 15);
-        printf("Enter para selecionar");
-
-        // Verifica se há uma tecla pressionada
-        if (keyhit()) {
-            char ch = readch(); // Lê a tecla pressionada
-
-            switch (ch) {
-                case 'w':
-                    opcao--;
-                    if (opcao < 1) opcao = 3;  // Volta para a última opção
-                    break;
-                case 's':
-                    opcao++;
-                    if (opcao > 3) opcao = 1;  // Retorna para a primeira opção
-                    break;
-                case 'k':
-                case '\n':
-                case '\r':
-                    switch (opcao) {
-                        case 1:
-                            game(); // Chama a função do jogo
-                            break;
-                        case 2:
-                            credits(); // Chama a função de créditos
-                            screenClear();
-                            portrait();
-                            break;
-                        case 3:
-                            printf("Saindo do jogo...\n");
-                            exit(0); // Sai do programa
-                    }
-                    break;
+            if (sscanf(line, "Nome: %29[^-] - Pontuação: %d", playerName, &playerScore) == 2) {
+                if (playerScore > highestScore) {
+                    highestScore = playerScore;
+                    strncpy(highestPlayer, playerName, sizeof(highestPlayer));
+                }
             }
         }
+        fclose(file);
+    }
 
-        // Redesenhar apenas se a opção mudou
-        if (opcao != previous_option) {
-            // Limpa a área das opções
-            screenGotoxy(MAXX / 2 - 6, 5);
-            printf("      "); // Limpa a linha da opção 1
-            screenGotoxy(MAXX / 2 - 6, 7);
-            printf("      "); // Limpa a linha da opção 2
-            screenGotoxy(MAXX / 2 - 6, 9);
-            printf("      "); // Limpa a linha da opção 3
+    screenGotoxy(SCREEN_WIDTH / 2 - 10, SCREEN_HEIGHT / 2 - 6);
+    printf("High Score: %s - %d", highestPlayer, highestScore);
+}
 
-            // Desenha novamente as opções com o indicador correto
-            screenGotoxy(MAXX / 2 - 6, 5);
-            printf("%sJogar\n", opcao == 1 ? "-> " : "   ");
-            screenGotoxy(MAXX / 2 - 6, 7);
-            printf("%sCréditos\n", opcao == 2 ? "-> " : "   ");
-            screenGotoxy(MAXX / 2 - 6, 9);
-            printf("%sSair\n", opcao == 3 ? "-> " : "   ");
+void displayScore() {
+    screenGotoxy(2, 1);
+    printf("Score: %d", score);
+}
 
-            previous_option = opcao; // Atualiza a opção anterior
+void gameOver() {
+    char playerName[30];
+    screenClear();
+    drawBorders();
+    
+    screenGotoxy(SCREEN_WIDTH / 2 - 10, SCREEN_HEIGHT / 2 - 2);
+    printf("Game Over! Seu score: %d", score);
+
+    screenGotoxy(SCREEN_WIDTH / 2 - 10, SCREEN_HEIGHT / 2);
+    printf("Digite seu nome: ");
+    fflush(stdout);
+    fgets(playerName, sizeof(playerName), stdin);
+
+    size_t len = strlen(playerName);
+    if (len > 0 && playerName[len - 1] == '\n') {
+        playerName[len - 1] = '\0';
+    }
+
+    saveScore(playerName, score);
+    printf("Score salvo! Pressione qualquer tecla para voltar ao menu...");
+    while (!keyhit()) {}
+    readch();
+}
+
+void drawBorders() {
+    screenDrawBorders();
+}
+
+void showMenu() {
+    screenClear();
+    drawBorders();
+    showHighScore();
+
+    screenGotoxy(SCREEN_WIDTH / 2 - 10, SCREEN_HEIGHT / 2 - 4);
+    printf("== SPACE INVADERS ==");
+
+    screenGotoxy(SCREEN_WIDTH / 2 - 8, SCREEN_HEIGHT / 2 - 2);
+    printf("1. Start Game");
+    screenGotoxy(SCREEN_WIDTH / 2 - 8, SCREEN_HEIGHT / 2 - 1);
+    printf("2. Quit");
+
+    screenGotoxy(SCREEN_WIDTH / 2 - 10, SCREEN_HEIGHT / 2 + 1);
+    printf("Controls:");
+    screenGotoxy(SCREEN_WIDTH / 2 - 10, SCREEN_HEIGHT / 2 + 2);
+    printf("A - Move Left");
+    screenGotoxy(SCREEN_WIDTH / 2 - 10, SCREEN_HEIGHT / 2 + 3);
+    printf("D - Move Right");
+    screenGotoxy(SCREEN_WIDTH / 2 - 10, SCREEN_HEIGHT / 2 + 4);
+    printf("W - Shoot");
+    screenGotoxy(SCREEN_WIDTH / 2 - 10, SCREEN_HEIGHT / 2 + 5);
+    printf("Q - Quit Game");
+
+    screenUpdate();
+}
+
+int mainMenu() {
+    showMenu();
+    while (1) {
+        if (keyhit()) {
+            int choice = readch();
+            if (choice == '1') {
+                return 1;
+            } else if (choice == '2') {
+                return 0;
+            }
         }
     }
 }
 
+void initGame() {
+    screenInit(1);
+    timerInit(200);
+    keyboardInit();
+    playerX = SCREEN_WIDTH / 2;
+    playerY = SCREEN_HEIGHT - 2;
+    bulletX = -1;
+    bulletY = -1;
+    alienBulletX = -1;
+    alienBulletY = -1;
+    score = 0;
 
-int main() {
-    printf("\e[?25l"); // Oculta o cursor
-    menu();
-    printf("\e[?25h"); // Mostra o cursor antes de sair
-    return 0;
-
+    for (int i = 0; i < 5; i++) {
+        for (int j = 0; j < 10; j++) {
+            invaders[i][j] = 1;
+            invaderPosX[i][j] = 5 + j * 3;
+            invaderPosY[i][j] = 3 + i * 2;
+        }
+    }
 }
 
+void drawPlayer() {
+    screenGotoxy(playerX, playerY);
+    printf("%c", PLAYER_SYMBOL);
+}
 
-// gcc ./src/*.c -I./include -o bomberman
+void drawInvaders() {
+    for (int i = 0; i < 5; i++) {
+        for (int j = 0; j < 10; j++) {
+            if (invaders[i][j] == 1) {
+                screenGotoxy(invaderPosX[i][j], invaderPosY[i][j]);
+                printf("%c", INVADER_SYMBOL);
+            }
+        }
+    }
+}
+
+void drawBullet() {
+    if (bulletY > 0) {
+        screenGotoxy(bulletX, bulletY);
+        printf("%c", BULLET_SYMBOL);
+    }
+}
+
+void drawAlienBullet() {
+    if (alienBulletY > 0) {
+        screenGotoxy(alienBulletX, alienBulletY);
+        printf("%c", ALIEN_BULLET_SYMBOL);
+    }
+}
+
+void updateBullet() {
+    if (bulletY > 0) {
+        bulletY--;
+        if (bulletY == 0) bulletX = bulletY = -1;
+    }
+}
+
+void updateAlienBullet() {
+    if (alienBulletY > 0) {
+        alienBulletY++;
+        if (alienBulletY >= playerY && alienBulletX == playerX) {
+            gameOver();
+        }
+        if (alienBulletY >= SCREEN_HEIGHT) alienBulletY = -1;
+    }
+}
+
+void shootBullet() {
+    if (bulletY < 0) {
+        bulletX = playerX;
+        bulletY = playerY - 1;
+    }
+}
+
+void alienShoot() {
+    for (int i = 4; i >= 0; i--) {
+        for (int j = 0; j < 10; j++) {
+            if (invaders[i][j] == 1) {
+                alienBulletX = invaderPosX[i][j];
+                alienBulletY = invaderPosY[i][j] + 1;
+                return;
+            }
+        }
+    }
+}
+
+void movePlayer(int direction) {
+    screenGotoxy(playerX, playerY);
+    printf(" ");
+    playerX += direction;
+    if (playerX < 1) playerX = 1;
+    if (playerX > SCREEN_WIDTH - 2) playerX = SCREEN_WIDTH - 2;
+}
+
+void updateInvaders() {
+    static int direction = 1;
+    static int stepDown = 0;
+
+    if (stepDown) {
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 10; j++) {
+                invaderPosY[i][j] += 1;
+                if (invaderPosY[i][j] >= playerY - 1) {
+                    gameOver();
+                }
+            }
+        }
+        stepDown = 0;
+    } else {
+        int atEdge = 0;
+        for (int i = 0; i < 5 && !atEdge; i++) {
+            if ((invaderPosX[i][0] <= 1 && direction == -1) || 
+                (invaderPosX[i][9] >= SCREEN_WIDTH - 2 && direction == 1)) {
+                atEdge = 1;
+                direction *= -1;
+                stepDown = 1;
+            }
+        }
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 10; j++) {
+                invaderPosX[i][j] += direction;
+            }
+        }
+    }
+}
+
+void checkCollisions() {
+    for (int i = 0; i < 5; i++) {
+        for (int j = 0; j < 10; j++) {
+            if (invaders[i][j] == 1) {
+                if (bulletX >= invaderPosX[i][j] - HITBOX_RADIUS &&
+                    bulletX <= invaderPosX[i][j] + HITBOX_RADIUS &&
+                    bulletY >= invaderPosY[i][j] - HITBOX_RADIUS &&
+                    bulletY <= invaderPosY[i][j] + HITBOX_RADIUS) {
+                    
+                    invaders[i][j] = 0;
+                    bulletX = bulletY = -1;
+                    score += 10;
+                }
+            }
+        }
+    }
+}
+
+void gameLoop() {
+    int ch;
+    while (1) {
+        if (timerTimeOver()) {
+            screenClear();
+            drawBorders();
+            drawPlayer();
+            drawInvaders();
+            drawBullet();
+            drawAlienBullet();
+            updateBullet();
+            updateAlienBullet();
+            updateInvaders();
+            checkCollisions();
+            displayScore();
+            if (rand() % 20 == 0) alienShoot();  // Alien atira aleatoriamente
+            screenUpdate();
+        }
+
+        if (keyhit()) {
+            ch = readch();
+            if (ch == 'a') movePlayer(-1);
+            else if (ch == 'd') movePlayer(1);
+            else if (ch == 'w') shootBullet();
+            else if (ch == 'q') break;
+        }
+    }
+    gameOver();
+}
+
+int main() {
+    if (mainMenu()) {
+        initGame();
+        gameLoop();
+    }
+    keyboardDestroy();
+    timerDestroy();
+    screenDestroy();
+    return 0;
+}
