@@ -1,11 +1,17 @@
 Gerar o executavel gcc ./src/*.c -I./include -o cli-lib-example (cli-lib-example pode ser mudado por um nome)
 
-exemplo: gcc ./src/*.c -I./include -o bomberman
+exemplo: gcc ./src/*.c -I./include -o space
 
 e para rodar no terminal: ./cli-lib-example (cli-lib-example pode ser mudado por um nome - no caso do exemplo: bomberman)
 
 para rodar no wsl:
 
 cd /home/vinicius/Bomberman
-gcc main.c $(find . -name "*.c" ! -name "main.c") -I./include -o bomberman
-./bomberman
+gcc main.c $(find . -name "*.c" ! -name "main.c") -I./include -o space
+./space
+
+
+para rodar o makefile
+
+primeiro use "make" 
+depois "make run" para rodar o arquivo
