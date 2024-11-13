@@ -84,7 +84,7 @@ void showHighScore()
                 // Se a pontuação do jogador atual for maior que a maior pontuação registrada
                 if (playerScore > highestScore)
                 {
-                    highestScore = playerScore;                                // Atualiza a maior pontuação
+                    highestScore = playerScore;    // Atualiza a maior pontuação
                     strncpy(highestPlayer, playerName, sizeof(highestPlayer)); // Atualiza o nome do jogador com a maior pontuação
                 }
             }
