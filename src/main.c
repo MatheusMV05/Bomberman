@@ -26,7 +26,8 @@ const char *ALIEN_BULLET_SPRITE = "v";
 // Aumentando a tela para acomodar os sprites
 #define SCREEN_WIDTH 200
 #define SCREEN_HEIGHT 50
-#define HITBOX_RADIUS 1
+#define HITBOX_RADIUS 5
+
 
 int playerX, playerY;
 int bulletX, bulletY;
@@ -215,7 +216,7 @@ void drawAlienBullet() {
 
 void updateBullet() {
     if (bulletY > 0) {
-        bulletY--;
+        bulletY-=2;
         if (bulletY == 0) bulletX = bulletY = -1;
     }
 }
