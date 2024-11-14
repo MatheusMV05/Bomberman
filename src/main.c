@@ -84,7 +84,7 @@ void showHighScore()
                 // Se a pontuação do jogador atual for maior que a maior pontuação registrada
                 if (playerScore > highestScore)
                 {
-                    highestScore = playerScore;    // Atualiza a maior pontuação
+                    highestScore = playerScore;                                // Atualiza a maior pontuação
                     strncpy(highestPlayer, playerName, sizeof(highestPlayer)); // Atualiza o nome do jogador com a maior pontuação
                 }
             }
@@ -104,6 +104,32 @@ void displayScore()
     printf("Score: %d", score); // Exibe a pontuação atual do jogador
 }
 
+void inputPlayerName(int score)
+{
+    char playerName[20];
+    FILE *file;
+
+    screenClear();
+    drawBorders();
+    screenGotoxy(SCREEN_WIDTH / 2 - 10, SCREEN_HEIGHT / 2);
+    printf("Digite seu nome: ");
+    scanf("%19s", playerName); // Lê o nome do jogador com limite de 19 caracteres
+
+    // Abre (ou cria) o arquivo para salvar o score e o nome do jogador
+    file = fopen("score.txt", "a");
+    if (file == NULL)
+    {
+        printf("Erro ao abrir o arquivo de scoreboard.\n");
+        return;
+    }
+
+    // Escreve o nome do jogador e a pontuação no arquivo
+    fprintf(file, "%s %d\n", playerName, score);
+    fclose(file); // Fecha o arquivo após salvar
+
+    printf("Pontuação salva com sucesso!\n");
+}
+
 // Função para exibir a tela de fim de jogo
 void gameOver()
 {
@@ -116,19 +142,12 @@ void gameOver()
 
     screenGotoxy(SCREEN_WIDTH / 2 - 10, SCREEN_HEIGHT / 2); // Move o cursor para a posição onde o nome será solicitado
     printf("Digite seu nome: ");                            // Solicita o nome do jogador
-    fgets(playerName, sizeof(playerName), stdin);           // Lê o nome do jogador
 
-    size_t len = strlen(playerName); // Obtém o comprimento do nome do jogador
-    if (len > 0 && playerName[len - 1] == '\n')
-    { // Remove o caractere de nova linha, se presente
-        playerName[len - 1] = '\0';
-    }
+    inputPlayerName(score); // Chama a função para permitir que o jogador insira seu nome
 
-    saveScore(playerName, score);                                           // Salva a pontuação do jogador
-    printf("Score salvo! Pressione qualquer tecla para voltar ao menu..."); // Informa que a pontuação foi salva
     while (!keyhit())
     {
-    }         // Aguarda até que uma tecla seja pressionada
+    } // Aguarda até que uma tecla seja pressionada
     readch(); // Lê a tecla pressionada
 }
 
@@ -371,14 +390,35 @@ void updateInvaders()
     }
 }
 
+void gameVictory()
+{
+    screenClear();                                         // Limpa a tela
+    drawBorders();                                         // Desenha as bordas
+    screenGotoxy(SCREEN_WIDTH / 2 - 5, SCREEN_HEIGHT / 2); // Centraliza a mensagem
+    printf("VOCÊ VENCEU!\n SCORE: %d\n\n (Clique em qualquer tecla para continuar)", score);             // Exibe a mensagem de vitória e a pontuação
+
+    // Aguarda o jogador pressionar uma tecla para continuar
+    while (!keyhit())
+    {
+    } // Espera até que uma tecla seja pressionada
+    readch(); // Captura a tecla pressionada para sair do loop
+
+    // Após a tecla ser pressionada, o jogador será direcionado para o scoreboard
+    inputPlayerName(score); // Função para permitir que o jogador insira seu nome
+}
+
 void checkCollisions()
 {
+    int remainingInvaders = 0; // Contador de invasores restantes
+
     for (int i = 0; i < 5; i++)
     { // Itera sobre as linhas de invasores
         for (int j = 0; j < 10; j++)
         { // Itera sobre as colunas de invasores
             if (invaders[i][j] == 1)
-            { // Verifica se o invasor está ativo
+            {                        // Verifica se o invasor está ativo
+                remainingInvaders++; // Incrementa se houver um invasor ativo
+
                 // Verifica se a bala do jogador colidiu com o invasor
                 if (bulletX >= invaderPosX[i][j] - HITBOX_RADIUS &&
                     bulletX <= invaderPosX[i][j] + HITBOX_RADIUS &&
@@ -392,6 +432,11 @@ void checkCollisions()
                 }
             }
         }
+    }
+
+    if (remainingInvaders == 0)
+    {              // Se não houver mais invasores
+        gameVictory(); // Exibe a tela de vitória
     }
 }
 
