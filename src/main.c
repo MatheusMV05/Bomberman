@@ -22,7 +22,7 @@ const char *BULLET_SPRITE = "|";
 const char *ALIEN_BULLET_SPRITE = "v";
 
 // Aumentando a tela para acomodar os sprites
-#define SCREEN_WIDTH 200
+#define SCREEN_WIDTH 150
 #define SCREEN_HEIGHT 50
 #define HITBOX_RADIUS 5
 
